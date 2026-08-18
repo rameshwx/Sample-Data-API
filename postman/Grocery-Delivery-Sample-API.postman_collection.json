@@ -1,0 +1,75 @@
+{
+  "info": {
+    "_postman_id": "e820e37e-3166-44da-9e94-4ce637ec811b",
+    "name": "Grocery Delivery Sample API",
+    "description": "Four-call grocery ordering flow. The quote request saves quote_id from its response; the order confirmation request consumes it.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://ntbnattqfhfqfdjrwmti.supabase.co" },
+    { "key": "publishableKey", "value": "" },
+    { "key": "selectedItemId", "value": "10000000-0000-0000-0000-000000000001" },
+    { "key": "quantity", "value": "2" },
+    { "key": "quoteId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Get grocery catalog",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "apikey", "value": "{{publishableKey}}" }],
+        "url": "{{baseUrl}}/rest/v1/grocery_catalog?select=id,sku,name,category_name,unit,price_cents,image_url&is_active=eq.true"
+      }
+    },
+    {
+      "name": "2. Get available riders",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "apikey", "value": "{{publishableKey}}" }],
+        "url": "{{baseUrl}}/rest/v1/delivery_riders?select=id,display_name,vehicle_type,service_area,availability&availability=eq.available"
+      }
+    },
+    {
+      "name": "3. Create order quote (select item first)",
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('quote request succeeds', () => pm.response.to.have.status(200));",
+            "const quote = pm.response.json()[0];",
+            "pm.expect(quote.quote_id).to.be.a('string');",
+            "pm.collectionVariables.set('quoteId', quote.quote_id);"
+          ]
+        }
+      }],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "apikey", "value": "{{publishableKey}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"p_item_id\": \"{{selectedItemId}}\",\n  \"p_quantity\": {{quantity}}\n}"
+        },
+        "url": "{{baseUrl}}/rest/v1/rpc/create_order_quote"
+      }
+    },
+    {
+      "name": "4. Confirm delivery order (uses quoteId)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "apikey", "value": "{{publishableKey}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"p_quote_id\": \"{{quoteId}}\",\n  \"p_customer_name\": \"Sam Taylor\",\n  \"p_delivery_address\": \"42 Palm Grove, Colombo 3\",\n  \"p_customer_note\": \"Please ring the bell\"\n}"
+        },
+        "url": "{{baseUrl}}/rest/v1/rpc/create_delivery_order"
+      }
+    }
+  ]
+}
